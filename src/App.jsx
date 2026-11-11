@@ -1,11 +1,8 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import "./App.css";
 
 function App() {
-  // どのタブを表示しているか（"register" = 登録, "list" = 一覧, "mypage" = マイページ）
   const [currentTab, setCurrentTab] = useState("register");
-
-  // データや入力値の状態管理
   const [reservations, setReservations] = useState([]);
   const [name, setName] = useState("");
   const [date, setDate] = useState("");
@@ -27,7 +24,23 @@ function App() {
 
   // 初回ロード時に一覧を取得
   useEffect(() => {
-    fetchReservations();
+    let isMounted = true;
+    const loadData = async () => {
+      try {
+        const response = await fetch("http://localhost:8080/api/reservations");
+        if (response.ok && isMounted) {
+          const data = await response.json();
+          setReservations(data);
+        }
+      } catch (err) {
+        console.log("通信エラー:", err);
+      }
+    };
+    loadData();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   // 2. 予約を登録する処理
@@ -49,8 +62,8 @@ function App() {
         alert("予約が完了しました！");
         setName("");
         setDate("");
-        fetchReservations(); // 一覧を再取得
-        setCurrentTab("list"); // 登録できたら自動で一覧画面へ移動
+        await fetchReservations();
+        setCurrentTab("list");
       } else {
         alert("登録に失敗しました。");
       }
@@ -59,16 +72,46 @@ function App() {
     }
   };
 
-  // 3. マイページで名前検索する処理
+  // 3. 予約をキャンセル（削除）する処理
+  const handleCancel = async (id) => {
+    if (!window.confirm("本当にこの予約をキャンセルしますか？")) {
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `http://localhost:8080/api/reservations/${id}`,
+        {
+          method: "DELETE",
+        },
+      );
+
+      if (response.ok) {
+        alert("予約をキャンセルしました。");
+        fetchReservations();
+      } else {
+        alert("キャンセルの処理に失敗しました。");
+      }
+    } catch (err) {
+      console.error("通信エラー:", err);
+    }
+  };
+
+  // 4. マイページで名前検索する処理（スペースを無視して検索可能）
   const handleSearch = (e) => {
     e.preventDefault();
     if (!searchName) {
       setMyReservations([]);
       return;
     }
-    const filtered = reservations.filter((item) =>
-      item.name.includes(searchName),
-    );
+    // 検索窓の文字からスペースをすべて削除
+    const keyword = searchName.replace(/\s+/g, "");
+
+    const filtered = reservations.filter((item) => {
+      // 登録されている名前からスペースをすべて削除して比較
+      const itemName = item.name.replace(/\s+/g, "");
+      return itemName.includes(keyword);
+    });
     setMyReservations(filtered);
   };
 
@@ -198,7 +241,7 @@ function App() {
         </div>
       )}
 
-      {/* ② 予約一覧画面 */}
+      {/* ② 予約一覧画面（キャンセル済みの場合はボタン非表示） */}
       {currentTab === "list" && (
         <div
           style={{
@@ -228,6 +271,7 @@ function App() {
                   <th>お名前</th>
                   <th>予約日</th>
                   <th>ステータス</th>
+                  <th>操作</th>
                 </tr>
               </thead>
               <tbody>
@@ -237,6 +281,27 @@ function App() {
                     <td>{item.name}</td>
                     <td>{item.date}</td>
                     <td>{item.status}</td>
+                    <td style={{ textAlign: "center" }}>
+                      {item.status !== "キャンセル" ? (
+                        <button
+                          onClick={() => handleCancel(item.id)}
+                          style={{
+                            padding: "5px 10px",
+                            backgroundColor: "#dc3545",
+                            color: "white",
+                            border: "none",
+                            cursor: "pointer",
+                            borderRadius: "4px",
+                          }}
+                        >
+                          キャンセル
+                        </button>
+                      ) : (
+                        <span style={{ color: "#888", fontSize: "14px" }}>
+                          キャンセル済み
+                        </span>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
