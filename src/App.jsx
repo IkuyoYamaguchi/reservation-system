@@ -1,364 +1,419 @@
-import { useState, useEffect } from "react";
+import React, { useState } from "react";
 import "./App.css";
 
 function App() {
-  const [currentTab, setCurrentTab] = useState("register");
-  const [reservations, setReservations] = useState([]);
+  // 現在の画面 ('top' | 'mypage')
+  const [currentPage, setCurrentPage] = useState("top");
+
+  // 入力フォームの状態
   const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [tel, setTel] = useState("");
   const [date, setDate] = useState("");
-  const [searchName, setSearchName] = useState("");
-  const [myReservations, setMyReservations] = useState([]);
 
-  // 1. バックエンドから予約一覧を読み込む関数
-  const fetchReservations = async () => {
-    try {
-      const response = await fetch("http://localhost:8080/api/reservations");
-      if (response.ok) {
-        const data = await response.json();
-        setReservations(data);
-      }
-    } catch (err) {
-      console.log("バックエンドとの通信エラー:", err);
-    }
-  };
+  // マイページ用の状態
+  const [reservations, setReservations] = useState([]);
+  const [searchEmail, setSearchEmail] = useState("");
 
-  // 初回ロード時に一覧を取得
-  useEffect(() => {
-    let isMounted = true;
-    const loadData = async () => {
-      try {
-        const response = await fetch("http://localhost:8080/api/reservations");
-        if (response.ok && isMounted) {
-          const data = await response.json();
-          setReservations(data);
-        }
-      } catch (err) {
-        console.log("通信エラー:", err);
-      }
-    };
-    loadData();
+  // ポップアップ（予約完了モーダル）の制御用状態
+  const [showModal, setShowModal] = useState(false);
+  const [registeredData, setRegisteredData] = useState(null);
+  const [message, setMessage] = useState("");
 
-    return () => {
-      isMounted = false;
-    };
-  }, []);
-
-  // 2. 予約を登録する処理
+  // 予約登録処理（POST /api/reservations）
   const handleRegister = async (e) => {
     e.preventDefault();
-    if (!name || !date) {
-      alert("お名前と日付を入力してください！");
-      return;
-    }
+    setMessage("");
+
+    const newReservation = { name, email, tel, date, status: "予約完了" };
 
     try {
       const response = await fetch("http://localhost:8080/api/reservations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, date, status: "予約確定" }),
+        body: JSON.stringify(newReservation),
       });
 
-      if (response.ok) {
-        alert("予約が完了しました！");
+      if (response.status === 201) {
+        const data = await response.json();
+        setRegisteredData(data); // 登録されたデータを保持
+        setShowModal(true); // ★ポップアップを表示する
+
+        // 入力欄をクリア
         setName("");
+        setEmail("");
+        setTel("");
         setDate("");
-        await fetchReservations();
-        setCurrentTab("list");
       } else {
-        alert("登録に失敗しました。");
+        setMessage("登録に失敗しました。入力内容を確認してください。");
       }
-    } catch (err) {
-      console.error("通信エラー:", err);
+    } catch (error) {
+      console.error("通信エラー:", error);
+      setMessage("サーバーとの通信に失敗しました。");
     }
   };
 
-  // 3. 予約をキャンセル（削除）する処理
+  // キャンセル処理（PUTでステータスを「キャンセル」に更新）
   const handleCancel = async (id) => {
-    if (!window.confirm("本当にこの予約をキャンセルしますか？")) {
-      return;
-    }
+    if (!window.confirm("本当にこの予約をキャンセルしますか？")) return;
 
     try {
       const response = await fetch(
-        `http://localhost:8080/api/reservations/${id}`,
+        `http://localhost:8080/api/reservations/${id}/cancel`,
         {
-          method: "DELETE",
+          method: "PUT",
         },
       );
 
       if (response.ok) {
         alert("予約をキャンセルしました。");
-        fetchReservations();
+        handleSearchByEmail(searchEmail);
       } else {
-        alert("キャンセルの処理に失敗しました。");
+        alert("指定された予約が見つかりませんでした。");
       }
-    } catch (err) {
-      console.error("通信エラー:", err);
+    } catch (error) {
+      console.error("キャンセルエラー:", error);
     }
   };
 
-  // 4. マイページで名前検索する処理（スペースを無視して検索可能）
-  const handleSearch = (e) => {
-    e.preventDefault();
-    if (!searchName) {
-      setMyReservations([]);
+  // メールアドレスで自分の予約を検索する関数
+  const handleSearchByEmail = async (targetEmail) => {
+    if (!targetEmail) {
+      setReservations([]);
       return;
     }
-    // 検索窓の文字からスペースをすべて削除
-    const keyword = searchName.replace(/\s+/g, "");
 
-    const filtered = reservations.filter((item) => {
-      // 登録されている名前からスペースをすべて削除して比較
-      const itemName = item.name.replace(/\s+/g, "");
-      return itemName.includes(keyword);
-    });
-    setMyReservations(filtered);
+    try {
+      const url = `http://localhost:8080/api/reservations?email=${encodeURIComponent(targetEmail)}`;
+      const response = await fetch(url);
+      if (response.ok) {
+        const data = await response.json();
+        setReservations(data);
+      }
+    } catch (error) {
+      console.error("データ取得エラー:", error);
+    }
+  };
+
+  const handleSearchSubmit = (e) => {
+    e.preventDefault();
+    handleSearchByEmail(searchEmail);
   };
 
   return (
     <div
       style={{
+        padding: "20px",
         fontFamily: "sans-serif",
         maxWidth: "600px",
-        margin: "40px auto",
-        padding: "20px",
+        margin: "0 auto",
+        position: "relative",
       }}
     >
-      <h1 style={{ textAlign: "center" }}>📅 予約管理システム</h1>
-
-      {/* タブの切り替えボタン */}
-      <div
+      {/* 画面上部のナビゲーション（シンプルに2画面） */}
+      <header
         style={{
+          marginBottom: "20px",
+          paddingBottom: "10px",
+          borderBottom: "2px solid #ccc",
           display: "flex",
-          justifyContent: "center",
-          gap: "10px",
-          marginBottom: "30px",
+          justifyContent: "space-between",
+          alignItems: "center",
         }}
       >
-        <button
-          onClick={() => setCurrentTab("register")}
-          style={{
-            padding: "10px 20px",
-            backgroundColor: currentTab === "register" ? "#007BFF" : "#ccc",
-            color: "white",
-            border: "none",
-            cursor: "pointer",
-            borderRadius: "5px",
-          }}
-        >
-          新規予約
-        </button>
-        <button
-          onClick={() => {
-            setCurrentTab("list");
-            fetchReservations();
-          }}
-          style={{
-            padding: "10px 20px",
-            backgroundColor: currentTab === "list" ? "#007BFF" : "#ccc",
-            color: "white",
-            border: "none",
-            cursor: "pointer",
-            borderRadius: "5px",
-          }}
-        >
-          予約一覧
-        </button>
-        <button
-          onClick={() => setCurrentTab("mypage")}
-          style={{
-            padding: "10px 20px",
-            backgroundColor: currentTab === "mypage" ? "#007BFF" : "#ccc",
-            color: "white",
-            border: "none",
-            cursor: "pointer",
-            borderRadius: "5px",
-          }}
-        >
-          マイページ
-        </button>
-      </div>
+        <h2 style={{ margin: 0, fontSize: "1.2rem" }}>予約システム</h2>
+        <nav style={{ display: "flex", gap: "8px" }}>
+          <button
+            onClick={() => setCurrentPage("top")}
+            style={{
+              fontWeight: currentPage === "top" ? "bold" : "normal",
+              padding: "6px 12px",
+            }}
+          >
+            トップページ（予約入力）
+          </button>
+          <button
+            onClick={() => {
+              setCurrentPage("mypage");
+              setReservations([]);
+              setSearchEmail("");
+            }}
+            style={{
+              fontWeight: currentPage === "mypage" ? "bold" : "normal",
+              padding: "6px 12px",
+            }}
+          >
+            マイページ（確認・一覧）
+          </button>
+        </nav>
+      </header>
 
-      {/* ① 新規予約画面 */}
-      {currentTab === "register" && (
-        <div
+      {message && <p style={{ color: "red" }}>{message}</p>}
+
+      {/* ==========================================
+          1. トップページ（予約入力画面）
+          ========================================== */}
+      {currentPage === "top" && (
+        <main
           style={{
-            background: "#f9f9f9",
+            border: "1px solid #ccc",
             padding: "20px",
-            borderRadius: "8px",
-            boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+            borderRadius: "5px",
+            backgroundColor: "#fff",
           }}
         >
-          <h2>新規予約の登録</h2>
+          <h2>トップページ（予約入力画面）</h2>
           <form onSubmit={handleRegister}>
-            <div style={{ marginBottom: "15px" }}>
-              <label style={{ display: "block", marginBottom: "5px" }}>
-                お名前：
-              </label>
+            <div style={{ marginBottom: "12px" }}>
+              <label>お名前: </label>
+              <br />
               <input
                 type="text"
-                placeholder="例：山田 太郎"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                style={{
-                  width: "100%",
-                  padding: "8px",
-                  boxSizing: "border-box",
-                }}
+                required
+                style={{ width: "100%", padding: "6px" }}
               />
             </div>
-            <div style={{ marginBottom: "15px" }}>
-              <label style={{ display: "block", marginBottom: "5px" }}>
-                予約日：
-              </label>
+            <div style={{ marginBottom: "12px" }}>
+              <label>メールアドレス: </label>
+              <br />
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                style={{ width: "100%", padding: "6px" }}
+              />
+            </div>
+            <div style={{ marginBottom: "12px" }}>
+              <label>電話番号: </label>
+              <br />
+              <input
+                type="tel"
+                value={tel}
+                onChange={(e) => setTel(e.target.value)}
+                required
+                style={{ width: "100%", padding: "6px" }}
+              />
+            </div>
+            <div style={{ marginBottom: "20px" }}>
+              <label>予約希望日: </label>
+              <br />
               <input
                 type="date"
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
-                style={{
-                  width: "100%",
-                  padding: "8px",
-                  boxSizing: "border-box",
-                }}
+                required
+                style={{ width: "100%", padding: "6px" }}
               />
             </div>
             <button
               type="submit"
               style={{
-                width: "100%",
-                padding: "10px",
-                backgroundColor: "#28a745",
+                padding: "10px 20px",
+                backgroundColor: "#4CAF50",
                 color: "white",
                 border: "none",
                 cursor: "pointer",
-                borderRadius: "4px",
-                fontSize: "16px",
+                width: "100%",
+                fontSize: "1rem",
               }}
             >
-              予約を登録する
+              予約する
             </button>
           </form>
-        </div>
+        </main>
       )}
 
-      {/* ② 予約一覧画面（キャンセル済みの場合はボタン非表示） */}
-      {currentTab === "list" && (
-        <div
+      {/* ==========================================
+          2. マイページ（利用者向け予約確認画面）
+          ========================================== */}
+      {currentPage === "mypage" && (
+        <main
           style={{
-            background: "#f9f9f9",
+            border: "1px solid #ccc",
             padding: "20px",
-            borderRadius: "8px",
-            boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+            borderRadius: "5px",
+            backgroundColor: "#fff",
           }}
         >
-          <h2>📋 予約一覧</h2>
-          {reservations.length === 0 ? (
-            <p>まだ予約はありません。</p>
-          ) : (
-            <table
-              border="1"
-              cellPadding="10"
-              style={{
-                borderCollapse: "collapse",
-                width: "100%",
-                marginTop: "10px",
-                background: "white",
-              }}
-            >
-              <thead>
-                <tr style={{ backgroundColor: "#eee" }}>
-                  <th>ID</th>
-                  <th>お名前</th>
-                  <th>予約日</th>
-                  <th>ステータス</th>
-                  <th>操作</th>
-                </tr>
-              </thead>
-              <tbody>
-                {reservations.map((item) => (
-                  <tr key={item.id}>
-                    <td>{item.id}</td>
-                    <td>{item.name}</td>
-                    <td>{item.date}</td>
-                    <td>{item.status}</td>
-                    <td style={{ textAlign: "center" }}>
-                      {item.status !== "キャンセル" ? (
-                        <button
-                          onClick={() => handleCancel(item.id)}
-                          style={{
-                            padding: "5px 10px",
-                            backgroundColor: "#dc3545",
-                            color: "white",
-                            border: "none",
-                            cursor: "pointer",
-                            borderRadius: "4px",
-                          }}
-                        >
-                          キャンセル
-                        </button>
-                      ) : (
-                        <span style={{ color: "#888", fontSize: "14px" }}>
-                          キャンセル済み
-                        </span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
-      )}
+          <h2>マイページ（利用者向け予約確認）</h2>
+          <p style={{ fontSize: "0.9rem", color: "#555" }}>
+            ご自身のメールアドレスを入力して、予約状況の確認・キャンセルを行ってください。
+          </p>
 
-      {/* ③ マイページ画面 */}
-      {currentTab === "mypage" && (
-        <div
-          style={{
-            background: "#f9f9f9",
-            padding: "20px",
-            borderRadius: "8px",
-            boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
-          }}
-        >
-          <h2>👤 マイページ（予約確認）</h2>
           <form
-            onSubmit={handleSearch}
-            style={{ display: "flex", gap: "10px", marginBottom: "20px" }}
+            onSubmit={handleSearchSubmit}
+            style={{ marginBottom: "20px", display: "flex", gap: "8px" }}
           >
             <input
-              type="text"
-              placeholder="ご登録のお名前を入力..."
-              value={searchName}
-              onChange={(e) => setSearchName(e.target.value)}
-              style={{ flex: 1, padding: "8px" }}
+              type="email"
+              value={searchEmail}
+              onChange={(e) => setSearchEmail(e.target.value)}
+              placeholder="登録したメールアドレスを入力"
+              required
+              style={{ padding: "6px", flex: 1 }}
             />
-            <button
-              type="submit"
-              style={{
-                padding: "8px 16px",
-                backgroundColor: "#007BFF",
-                color: "white",
-                border: "none",
-                cursor: "pointer",
-                borderRadius: "4px",
-              }}
-            >
-              検索
+            <button type="submit" style={{ padding: "6px 12px" }}>
+              自分の予約を検索
             </button>
           </form>
 
-          <h3>検索結果</h3>
-          {myReservations.length > 0 ? (
-            <ul style={{ paddingLeft: "20px" }}>
-              {myReservations.map((item) => (
-                <li key={item.id} style={{ marginBottom: "8px" }}>
-                  {item.date} - <strong>{item.name}</strong> ({item.status})
+          {reservations.length === 0 ? (
+            <p style={{ color: "#666" }}>該当する予約データはありません。</p>
+          ) : (
+            <ul style={{ listStyle: "none", padding: 0 }}>
+              {reservations.map((res) => (
+                <li
+                  key={res.id}
+                  style={{
+                    border: "1px solid #e0e0e0",
+                    padding: "15px",
+                    marginBottom: "12px",
+                    borderRadius: "6px",
+                    backgroundColor: "#fafafa",
+                  }}
+                >
+                  <p style={{ margin: "4px 0" }}>
+                    <strong>予約ID:</strong> {res.id}
+                  </p>
+                  <p style={{ margin: "4px 0" }}>
+                    <strong>お名前:</strong> {res.name}
+                  </p>
+                  <p style={{ margin: "4px 0" }}>
+                    <strong>メール:</strong> {res.email}
+                  </p>
+                  <p style={{ margin: "4px 0" }}>
+                    <strong>電話番号:</strong> {res.tel}
+                  </p>
+                  <p style={{ margin: "4px 0" }}>
+                    <strong>希望日:</strong> {res.date}
+                  </p>
+
+                  <p style={{ margin: "4px 0" }}>
+                    <strong>ステータス:</strong>{" "}
+                    <span
+                      style={{
+                        color: res.status === "キャンセル" ? "red" : "green",
+                        fontWeight: "bold",
+                      }}
+                    >
+                      {res.status}
+                    </span>
+                  </p>
+
+                  {res.status !== "キャンセル" && (
+                    <button
+                      onClick={() => handleCancel(res.id)}
+                      style={{
+                        backgroundColor: "#d32f2f",
+                        color: "white",
+                        border: "none",
+                        padding: "6px 12px",
+                        cursor: "pointer",
+                        marginTop: "10px",
+                        borderRadius: "4px",
+                      }}
+                    >
+                      この予約をキャンセル
+                    </button>
+                  )}
                 </li>
               ))}
             </ul>
-          ) : (
-            <p>該当する予約が見つからないか、検索されていません。</p>
           )}
+        </main>
+      )}
+
+      {/* ==========================================
+          3. 予約完了ポップアップ（モーダル）
+          ========================================== */}
+      {showModal && registeredData && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            width: "100%",
+            height: "100%",
+            backgroundColor: "rgba(0, 0, 0, 0.5)",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            zIndex: 1000,
+          }}
+        >
+          <div
+            style={{
+              background: "#fff",
+              padding: "30px",
+              borderRadius: "8px",
+              width: "90%",
+              maxWidth: "400px",
+              boxShadow: "0 4px 15px rgba(0,0,0,0.2)",
+              textAlign: "center",
+            }}
+          >
+            <h3 style={{ color: "#2e7d32", marginTop: 0 }}>
+              予約が完了しました！
+            </h3>
+            <p style={{ fontSize: "0.95rem", color: "#555" }}>
+              ご予約ありがとうございます。以下の内容で登録されました。
+            </p>
+
+            <div
+              style={{
+                background: "#f9f9f9",
+                padding: "12px",
+                borderRadius: "5px",
+                margin: "15px 0",
+                textAlign: "left",
+                border: "1px solid #eee",
+              }}
+            >
+              <p style={{ margin: "4px 0" }}>
+                <strong>予約ID:</strong> {registeredData.id}
+              </p>
+              <p style={{ margin: "4px 0" }}>
+                <strong>お名前:</strong> {registeredData.name}
+              </p>
+              <p style={{ margin: "4px 0" }}>
+                <strong>メール:</strong> {registeredData.email}
+              </p>
+              <p style={{ margin: "4px 0" }}>
+                <strong>希望日:</strong> {registeredData.date}
+              </p>
+            </div>
+
+            <div
+              style={{ display: "flex", gap: "10px", justifyContent: "center" }}
+            >
+              <button
+                onClick={() => setShowModal(false)}
+                style={{ padding: "8px 15px", cursor: "pointer" }}
+              >
+                閉じる
+              </button>
+              <button
+                onClick={() => {
+                  setShowModal(false);
+                  setCurrentPage("mypage");
+                  setSearchEmail(registeredData.email);
+                  handleSearchByEmail(registeredData.email);
+                }}
+                style={{
+                  padding: "8px 15px",
+                  backgroundColor: "#1976d2",
+                  color: "white",
+                  border: "none",
+                  cursor: "pointer",
+                }}
+              >
+                マイページで確認する
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
