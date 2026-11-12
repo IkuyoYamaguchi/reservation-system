@@ -1,4 +1,4 @@
-/* 全体のベース設定：上品なグレージュの背景と、シンプルな sans-serif フォント指定 */
+/* 全体のベース設定 */
 body {
   margin: 0;
   padding: 0;
@@ -11,11 +11,13 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* アプリ全体のコンテナ */
+/* アプリ全体のコンテナ：画面幅に合わせて伸縮しつつ、広がりすぎないように調整 */
 .app-container {
-  padding: 40px 30px;
-  max-width: 580px;
-  margin: 50px auto;
+  width: 90%; /* 画面が狭いときは横幅の90%を使う */
+  max-width: 580px; /* パソコンなどでは最大580pxまでにする */
+  margin: 40px auto; /* 上下に余白を取り、左右は中央寄せ */
+  padding: 30px 20px; /* 内側の余白 */
+  box-sizing: border-box; /* パディングを含めてサイズを計算する */
   background-color: #ffffff;
   border-radius: 16px;
   box-shadow: 0 10px 30px rgba(74, 69, 67, 0.05);
@@ -30,6 +32,8 @@ header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap; /* 画面がすごく狭いときに折り返せるようにする */
+  gap: 10px;
 }
 
 header h2 {
@@ -150,10 +154,12 @@ form[onSubmit*="Search"] {
   display: flex;
   gap: 8px;
   margin-bottom: 25px;
+  flex-wrap: wrap; /* スマホで縦並びに崩れないようにする配慮 */
 }
 
 form[onSubmit*="Search"] input {
   flex: 1;
+  min-width: 200px;
 }
 
 form[onSubmit*="Search"] button {
@@ -242,6 +248,8 @@ li button:hover {
   justify-content: center;
   align-items: center;
   z-index: 1000;
+  padding: 15px; /* スマホの端に寄ったときに余白を確保 */
+  box-sizing: border-box;
 }
 
 /* モーダルのボックス本体 */
@@ -249,9 +257,10 @@ li button:hover {
   background: #ffffff;
   padding: 35px 30px;
   border-radius: 16px;
-  width: 90%;
+  width: 100%;
   max-width: 400px;
   box-shadow: 0 15px 35px rgba(74, 69, 67, 0.1);
   text-align: center;
   border: 1px solid #efece9;
+  box-sizing: border-box;
 }
