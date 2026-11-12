@@ -36,8 +36,8 @@ function App() {
 
       if (response.status === 201) {
         const data = await response.json();
-        setRegisteredData(data); // 登録されたデータを保持
-        setShowModal(true); // ★ポップアップを表示する
+        setRegisteredData(data);
+        setShowModal(true); // ポップアップを表示
 
         // 入力欄をクリア
         setName("");
@@ -101,34 +101,14 @@ function App() {
   };
 
   return (
-    <div
-      style={{
-        padding: "20px",
-        fontFamily: "sans-serif",
-        maxWidth: "600px",
-        margin: "0 auto",
-        position: "relative",
-      }}
-    >
-      {/* 画面上部のナビゲーション（シンプルに2画面） */}
-      <header
-        style={{
-          marginBottom: "20px",
-          paddingBottom: "10px",
-          borderBottom: "2px solid #ccc",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-        }}
-      >
-        <h2 style={{ margin: 0, fontSize: "1.2rem" }}>予約システム</h2>
-        <nav style={{ display: "flex", gap: "8px" }}>
+    <div className="app-container">
+      {/* ヘッダー・ナビゲーション */}
+      <header>
+        <h2>予約システム</h2>
+        <nav>
           <button
             onClick={() => setCurrentPage("top")}
-            style={{
-              fontWeight: currentPage === "top" ? "bold" : "normal",
-              padding: "6px 12px",
-            }}
+            className={currentPage === "top" ? "active" : ""}
           >
             トップページ（予約入力）
           </button>
@@ -138,10 +118,7 @@ function App() {
               setReservations([]);
               setSearchEmail("");
             }}
-            style={{
-              fontWeight: currentPage === "mypage" ? "bold" : "normal",
-              padding: "6px 12px",
-            }}
+            className={currentPage === "mypage" ? "active" : ""}
           >
             マイページ（確認・一覧）
           </button>
@@ -154,74 +131,49 @@ function App() {
           1. トップページ（予約入力画面）
           ========================================== */}
       {currentPage === "top" && (
-        <main
-          style={{
-            border: "1px solid #ccc",
-            padding: "20px",
-            borderRadius: "5px",
-            backgroundColor: "#fff",
-          }}
-        >
+        <main>
           <h2>トップページ（予約入力画面）</h2>
           <form onSubmit={handleRegister}>
-            <div style={{ marginBottom: "12px" }}>
-              <label>お名前: </label>
-              <br />
+            <div style={{ marginBottom: "16px" }}>
+              <label>お名前</label>
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
-                style={{ width: "100%", padding: "6px" }}
+                placeholder="例：山田 太郎"
               />
             </div>
-            <div style={{ marginBottom: "12px" }}>
-              <label>メールアドレス: </label>
-              <br />
+            <div style={{ marginBottom: "16px" }}>
+              <label>メールアドレス</label>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                style={{ width: "100%", padding: "6px" }}
+                placeholder="例：example@email.com"
               />
             </div>
-            <div style={{ marginBottom: "12px" }}>
-              <label>電話番号: </label>
-              <br />
+            <div style={{ marginBottom: "16px" }}>
+              <label>電話番号</label>
               <input
                 type="tel"
                 value={tel}
                 onChange={(e) => setTel(e.target.value)}
                 required
-                style={{ width: "100%", padding: "6px" }}
+                placeholder="例：09012345678"
               />
             </div>
-            <div style={{ marginBottom: "20px" }}>
-              <label>予約希望日: </label>
-              <br />
+            <div style={{ marginBottom: "24px" }}>
+              <label>予約希望日</label>
               <input
                 type="date"
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
                 required
-                style={{ width: "100%", padding: "6px" }}
               />
             </div>
-            <button
-              type="submit"
-              style={{
-                padding: "10px 20px",
-                backgroundColor: "#4CAF50",
-                color: "white",
-                border: "none",
-                cursor: "pointer",
-                width: "100%",
-                fontSize: "1rem",
-              }}
-            >
-              予約する
-            </button>
+            <button type="submit">予約する</button>
           </form>
         </main>
       )}
@@ -230,72 +182,57 @@ function App() {
           2. マイページ（利用者向け予約確認画面）
           ========================================== */}
       {currentPage === "mypage" && (
-        <main
-          style={{
-            border: "1px solid #ccc",
-            padding: "20px",
-            borderRadius: "5px",
-            backgroundColor: "#fff",
-          }}
-        >
+        <main>
           <h2>マイページ（利用者向け予約確認）</h2>
-          <p style={{ fontSize: "0.9rem", color: "#555" }}>
+          <p
+            style={{ fontSize: "0.9rem", color: "#555", marginBottom: "16px" }}
+          >
             ご自身のメールアドレスを入力して、予約状況の確認・キャンセルを行ってください。
           </p>
 
-          <form
-            onSubmit={handleSearchSubmit}
-            style={{ marginBottom: "20px", display: "flex", gap: "8px" }}
-          >
+          <form onSubmit={handleSearchSubmit}>
             <input
               type="email"
               value={searchEmail}
               onChange={(e) => setSearchEmail(e.target.value)}
               placeholder="登録したメールアドレスを入力"
               required
-              style={{ padding: "6px", flex: 1 }}
             />
-            <button type="submit" style={{ padding: "6px 12px" }}>
-              自分の予約を検索
-            </button>
+            <button type="submit">検索</button>
           </form>
 
           {reservations.length === 0 ? (
-            <p style={{ color: "#666" }}>該当する予約データはありません。</p>
+            <p
+              style={{ color: "#666", textAlign: "center", padding: "20px 0" }}
+            >
+              該当する予約データはありません。
+            </p>
           ) : (
-            <ul style={{ listStyle: "none", padding: 0 }}>
+            <ul>
               {reservations.map((res) => (
-                <li
-                  key={res.id}
-                  style={{
-                    border: "1px solid #e0e0e0",
-                    padding: "15px",
-                    marginBottom: "12px",
-                    borderRadius: "6px",
-                    backgroundColor: "#fafafa",
-                  }}
-                >
-                  <p style={{ margin: "4px 0" }}>
+                <li key={res.id}>
+                  <p>
                     <strong>予約ID:</strong> {res.id}
                   </p>
-                  <p style={{ margin: "4px 0" }}>
+                  <p>
                     <strong>お名前:</strong> {res.name}
                   </p>
-                  <p style={{ margin: "4px 0" }}>
+                  <p>
                     <strong>メール:</strong> {res.email}
                   </p>
-                  <p style={{ margin: "4px 0" }}>
+                  <p>
                     <strong>電話番号:</strong> {res.tel}
                   </p>
-                  <p style={{ margin: "4px 0" }}>
+                  <p>
                     <strong>希望日:</strong> {res.date}
                   </p>
 
-                  <p style={{ margin: "4px 0" }}>
+                  <p>
                     <strong>ステータス:</strong>{" "}
                     <span
                       style={{
-                        color: res.status === "キャンセル" ? "red" : "green",
+                        color:
+                          res.status === "キャンセル" ? "#d32f2f" : "#2e7d32",
                         fontWeight: "bold",
                       }}
                     >
@@ -304,18 +241,7 @@ function App() {
                   </p>
 
                   {res.status !== "キャンセル" && (
-                    <button
-                      onClick={() => handleCancel(res.id)}
-                      style={{
-                        backgroundColor: "#d32f2f",
-                        color: "white",
-                        border: "none",
-                        padding: "6px 12px",
-                        cursor: "pointer",
-                        marginTop: "10px",
-                        borderRadius: "4px",
-                      }}
-                    >
+                    <button onClick={() => handleCancel(res.id)}>
                       この予約をキャンセル
                     </button>
                   )}
@@ -330,31 +256,8 @@ function App() {
           3. 予約完了ポップアップ（モーダル）
           ========================================== */}
       {showModal && registeredData && (
-        <div
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            width: "100%",
-            height: "100%",
-            backgroundColor: "rgba(0, 0, 0, 0.5)",
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            zIndex: 1000,
-          }}
-        >
-          <div
-            style={{
-              background: "#fff",
-              padding: "30px",
-              borderRadius: "8px",
-              width: "90%",
-              maxWidth: "400px",
-              boxShadow: "0 4px 15px rgba(0,0,0,0.2)",
-              textAlign: "center",
-            }}
-          >
+        <div className="modal-overlay">
+          <div className="modal-content">
             <h3 style={{ color: "#2e7d32", marginTop: 0 }}>
               予約が完了しました！
             </h3>
@@ -365,8 +268,8 @@ function App() {
             <div
               style={{
                 background: "#f9f9f9",
-                padding: "12px",
-                borderRadius: "5px",
+                padding: "14px",
+                borderRadius: "8px",
                 margin: "15px 0",
                 textAlign: "left",
                 border: "1px solid #eee",
@@ -387,12 +290,14 @@ function App() {
             </div>
 
             <div
-              style={{ display: "flex", gap: "10px", justifyContent: "center" }}
+              style={{
+                display: "flex",
+                gap: "10px",
+                justifyContent: "center",
+                marginTop: "20px",
+              }}
             >
-              <button
-                onClick={() => setShowModal(false)}
-                style={{ padding: "8px 15px", cursor: "pointer" }}
-              >
+              <button onClick={() => setShowModal(false)} className="btn-back">
                 閉じる
               </button>
               <button
@@ -402,12 +307,11 @@ function App() {
                   setSearchEmail(registeredData.email);
                   handleSearchByEmail(registeredData.email);
                 }}
+                className="btn-primary"
                 style={{
-                  padding: "8px 15px",
-                  backgroundColor: "#1976d2",
-                  color: "white",
-                  border: "none",
-                  cursor: "pointer",
+                  width: "auto",
+                  padding: "8px 16px",
+                  fontSize: "0.9rem",
                 }}
               >
                 マイページで確認する
