@@ -76,6 +76,34 @@ function App() {
     }
   };
 
+  // 物理削除処理（DELETE /api/reservations/{id}）
+  const handleDelete = async (id) => {
+    if (
+      !window.confirm(
+        "本当にこの予約データを完全に削除しますか？（※この操作は元に戻せません）",
+      )
+    )
+      return;
+
+    try {
+      const response = await fetch(
+        `http://localhost:8080/api/reservations/${id}`,
+        {
+          method: "DELETE",
+        },
+      );
+
+      if (response.ok) {
+        alert("予約データを完全に削除しました。");
+        handleSearchByEmail(searchEmail);
+      } else {
+        alert("削除に失敗しました。");
+      }
+    } catch (error) {
+      console.error("削除エラー:", error);
+    }
+  };
+
   // メールアドレスで自分の予約を検索する関数
   const handleSearchByEmail = async (targetEmail) => {
     if (!targetEmail) {
@@ -187,7 +215,7 @@ function App() {
           <p
             style={{ fontSize: "0.9rem", color: "#555", marginBottom: "16px" }}
           >
-            ご自身のメールアドレスを入力して、予約状況の確認・キャンセルを行ってください。
+            ご自身のメールアドレスを入力して、予約状況の確認・キャンセル・削除を行ってください。
           </p>
 
           <form onSubmit={handleSearchSubmit}>
@@ -210,7 +238,14 @@ function App() {
           ) : (
             <ul>
               {reservations.map((res) => (
-                <li key={res.id}>
+                <li
+                  key={res.id}
+                  style={{
+                    marginBottom: "20px",
+                    borderBottom: "1px solid #ddd",
+                    paddingBottom: "15px",
+                  }}
+                >
                   <p>
                     <strong>予約ID:</strong> {res.id}
                   </p>
@@ -240,11 +275,21 @@ function App() {
                     </span>
                   </p>
 
-                  {res.status !== "キャンセル" && (
-                    <button onClick={() => handleCancel(res.id)}>
-                      この予約をキャンセル
+                  <div
+                    style={{ display: "flex", gap: "10px", marginTop: "10px" }}
+                  >
+                    {res.status !== "キャンセル" && (
+                      <button onClick={() => handleCancel(res.id)}>
+                        この予約をキャンセル
+                      </button>
+                    )}
+                    <button
+                      onClick={() => handleDelete(res.id)}
+                      style={{ backgroundColor: "#d32f2f", color: "white" }}
+                    >
+                      完全に削除する
                     </button>
-                  )}
+                  </div>
                 </li>
               ))}
             </ul>
